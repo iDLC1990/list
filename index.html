@@ -25,11 +25,9 @@
     const refreshInterval = 10000; // обновление каждые 10 секунд
 
     function fetchAndRenderSheet() {
-      // Удаляем старый скрипт, если он был
       const oldScript = document.getElementById('jsonpScript');
       if (oldScript) oldScript.remove();
 
-      // Создаём новый JSONP скрипт
       const script = document.createElement('script');
       script.id = 'jsonpScript';
       script.src = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json&callback=handleSheetResponse`;
@@ -44,7 +42,6 @@
 
       tbody.innerHTML = '';
 
-      // Обновляем заголовки один раз
       if (headerRow.children.length === 0) {
         cols.forEach(col => {
           const th = document.createElement('th');
@@ -53,7 +50,6 @@
         });
       }
 
-      // Сегодняшняя дата в формате YYYY-MM-DD
       const today = new Date();
       const todayStr = today.toISOString().split('T')[0];
 
@@ -71,9 +67,7 @@
       });
     }
 
-    // Первая загрузка
     fetchAndRenderSheet();
-    // Периодическое обновление
     setInterval(fetchAndRenderSheet, refreshInterval);
   </script>
 </body>
