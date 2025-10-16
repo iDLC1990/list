@@ -1,73 +1,81 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Данные за сегодня</title>
-  <style>
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #000; padding: 5px; text-align: left; }
-    th { background-color: #f0f0f0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Данные за последнюю дату</title>
+<style>
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #000; padding: 5px; text-align: left; }
+  th { background-color: #f0f0f0; }
+</style>
 </head>
 <body>
-  <h1>Данные за сегодня</h1>
-  <table id="sheetData">
-    <thead><tr id="headerRow"></tr></thead>
-    <tbody></tbody>
-  </table>
+<h1>Данные за последнюю дату</h1>
+<table id="sheetData">
+  <thead><tr id="headerRow"></tr></thead>
+  <tbody></tbody>
+</table>
 
-  <script>
-    const sheetID = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
-    const sheetName = 'FI Station 2 ULANOVYCH.R';
-    const refreshInterval = 10000;
+<script>
+const sheetID = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
+const sheetName = 'FI Station 2 ULANOVYCH.R';
+const refreshInterval = 10000;
 
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
 
-    function fetchAndRenderSheet() {
-      fetch(sheetUrl)
-        .then(res => res.text())
-        .then(data => {
-          // Убираем обёртку google.visualization.Query.setResponse(...)
-          const json = JSON.parse(data.match(/\(([\s\S]+)\)/)[1]);
-          const rows = json.table.rows;
-          const cols = json.table.cols;
+function fetchAndRenderSheet() {
+  fetch(sheetUrl)
+    .then(res => res.text())
+    .then(data => {
+      // Убираем обёртку google.visualization.Query.setResponse(...)
+      const json = JSON.parse(data.match(/\(([\s\S]+)\)/)[1]);
+      const rows = json.table.rows;
+      const cols = json.table.cols;
 
-          const headerRow = document.getElementById('headerRow');
-          const tbody = document.querySelector('#sheetData tbody');
-          tbody.innerHTML = '';
+      const headerRow = document.getElementById('headerRow');
+      const tbody = document.querySelector('#sheetData tbody');
+      tbody.innerHTML = '';
 
-          // Заголовки один раз
-          if (headerRow.children.length === 0) {
-            cols.forEach(col => {
-              const th = document.createElement('th');
-              th.textContent = col.label;
-              headerRow.appendChild(th);
-            });
-          }
+      // Заголовки один раз
+      if (headerRow.children.length === 0) {
+        cols.forEach(col => {
+          const th = document.createElement('th');
+          th.textContent = col.label;
+          headerRow.appendChild(th);
+        });
+      }
 
-          // Сегодняшняя дата в формате YYYY-MM-DD
-          const todayStr = new Date().toISOString().split('T')[0];
+      // Находим последнюю дату (YYYY-MM-DD)
+      let lastDate = '';
+      rows.forEach(row => {
+        const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
+        if (cellDateTime && (!lastDate || cellDateTime > lastDate)) {
+          lastDate = cellDateTime;
+        }
+      });
 
-          // Выводим только строки с сегодняшней датой
-          rows.forEach(row => {
-            const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
-            if (cellDateTime === todayStr) {
-              const tr = document.createElement('tr');
-              row.c.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell ? cell.v : '';
-                tr.appendChild(td);
-              });
-              tbody.appendChild(tr);
-            }
+      // Выводим только строки с этой датой
+      rows.forEach(row => {
+        const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
+        if (cellDateTime === lastDate) {
+          const tr = document.createElement('tr');
+          row.c.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell ? cell.v : '';
+            tr.appendChild(td);
           });
-        })
-        .catch(err => console.error('Ошибка загрузки данных:', err));
-    }
+          tbody.appendChild(tr);
+        }
+      });
+    })
+    .catch(err => console.error('Ошибка загрузки данных:', err));
+}
 
-    fetchAndRenderSheet();
-    setInterval(fetchAndRenderSheet, refreshInterval);
-  </script>
+// Первая загрузка
+fetchAndRenderSheet();
+// Автообновление каждые 10 секунд
+setInterval(fetchAndRenderSheet, refreshInterval);
+</script>
 </body>
 </html>
