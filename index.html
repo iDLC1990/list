@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Данные за сегодня</title>
+<title>Данные за последнюю дату</title>
 <style>
 table { border-collapse: collapse; width: 100%; }
 th, td { border: 1px solid #000; padding: 5px; text-align: left; }
@@ -10,7 +10,7 @@ th { background-color: #f0f0f0; }
 </style>
 </head>
 <body>
-<h1>Данные за сегодня</h1>
+<h1>Данные за последнюю дату</h1>
 <table id="sheetData">
   <thead><tr id="headerRow"></tr></thead>
   <tbody></tbody>
@@ -38,7 +38,6 @@ function handleSheetResponse(response) {
   const tbody = document.querySelector('#sheetData tbody');
   tbody.innerHTML = '';
 
-  // Заголовки один раз
   if (headerRow.children.length === 0) {
     cols.forEach(col => {
       const th = document.createElement('th');
@@ -47,11 +46,19 @@ function handleSheetResponse(response) {
     });
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
+  // Находим последнюю дату в столбце A
+  let lastDate = '';
   rows.forEach(row => {
-    const cellDateTime = row.c[0] ? row.c[0].v : '';
-    if (cellDateTime && cellDateTime.substring(0,10) === todayStr) {
+    const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
+    if (cellDateTime && (!lastDate || cellDateTime > lastDate)) {
+      lastDate = cellDateTime;
+    }
+  });
+
+  // Выводим только строки с последней датой
+  rows.forEach(row => {
+    const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
+    if (cellDateTime === lastDate) {
       const tr = document.createElement('tr');
       row.c.forEach(cell => {
         const td = document.createElement('td');
