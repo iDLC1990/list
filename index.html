@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Данные из Google Таблицы</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #000; padding: 5px; text-align: left; }
+    th { background-color: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Данные из листа FI Station 2 ULANOVYCH.R</h1>
+  <table id="sheetData">
+    <thead>
+      <tr id="headerRow"></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const sheetUrl = 'https://docs.google.com/spreadsheets/d/10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU/gviz/tq?tqx=out:csv&sheet=FI%20Station%202%20ULANOVYCH.R';
+    const refreshInterval = 10000; // обновление каждые 10 секунд
+
+    function fetchAndRenderSheet() {
+      fetch(sheetUrl)
+        .then(response => response.text())
+        .then(csvText => {
+          const rows = csvText.trim().split('\n').map(row => row.split(','));
+          const headerRow = document.getElementById('headerRow');
+          const tbody = document.querySelector('#sheetData tbody');
+
+          // Если таблица пуста, очищаем тело
+          tbody.innerHTML = '';
+
+          // Обновляем заголовки только один раз
+          if (headerRow.children.length === 0) {
+            rows[0].forEach(cell => {
+              const th = document.createElement('th');
+              th.textContent = cell;
+              headerRow.appendChild(th);
+            });
+          }
+
+          // Добавляем новые строки данных
+          rows.slice(1).forEach(row => {
+            const tr = document.createElement('tr');
+            row.forEach(cell => {
+              const td = document.createElement('td');
+              td.textContent = cell;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(error => console.error('Ошибка загрузки данных:', error));
+    }
+
+    // Первая загрузка
+    fetchAndRenderSheet();
+
+    // Периодическое обновление
+    setInterval(fetchAndRenderSheet, refreshInterval);
+  </script>
+</body>
+</html>
