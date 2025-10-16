@@ -46,10 +46,10 @@
           const today = new Date();
           const todayStr = today.toISOString().split('T')[0];
 
-          // Фильтруем строки по столбцу A (индекс 0)
+          // Фильтруем строки по столбцу A (индекс 0), учитывая формат YYYY-MM-DD HH:MM:SS
           rows.slice(1).forEach(row => {
-            const cellDate = row[0]; // первый столбец
-            if (cellDate && cellDate.startsWith(todayStr)) {
+            const cellDateTime = row[0]; // первый столбец
+            if (cellDateTime && cellDateTime.substring(0,10) === todayStr) {
               const tr = document.createElement('tr');
               row.forEach(cell => {
                 const td = document.createElement('td');
