@@ -51,26 +51,13 @@ const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/value
 const secondSheetId = '1UWu4bcuHg6NHhK8ZvjDlQAIue6R1FLBlmAlBhHBj-D8';
 const secondSheetName = '123';
 
-async function getData(sheetName){
-  try{
-    const response = await fetch(`${sheetURL}${encodeURIComponent(sheetName)}?key=${apiKey}`);
-    const data = await response.json();
-    return data.values || [];
-  }catch(err){
-    console.error('Ошибка получения данных:', err);
-    return [];
-  }
-}
-
-// Получаем данные первой таблицы
+// Получаем данные листа FI Station 2 ULANOVYCH.R
 async function fetchMainData(){
-  const sheetNames = ['FI Station KOVALCHYK Y.','FI Station 2 ULANOVYCH.R'];
-  let combined = [];
-  for(const name of sheetNames){
-    const sheetData = await getData(name);
-    if(sheetData.length<2) continue;
-    const rows = sheetData.slice(1);
-    const mapped = rows.map(row=>({
+  try{
+    const response = await fetch(`${sheetURL}${encodeURIComponent('FI Station 2 ULANOVYCH.R')}?key=${apiKey}`);
+    const data = await response.json();
+    const rows = data.values || [];
+    return rows.slice(1).map(row=>({
       date: row[0]||'',
       serial: row[2]||'',
       statusE: (row[4]||'').toUpperCase(),
@@ -79,9 +66,10 @@ async function fetchMainData(){
       description: row[10]||'',
       person: row[5]||''
     }));
-    combined = combined.concat(mapped);
+  }catch(err){
+    console.error('Ошибка получения данных первой таблицы', err);
+    return [];
   }
-  return combined;
 }
 
 // Получаем данные второй таблицы для подсчета проверок
@@ -193,7 +181,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
 
       const detailThead = document.createElement('thead');
       const headRow = document.createElement('tr');
-      ['Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description', 'Checks Today'].forEach(txt=>{
+      ['Checks Today','Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description'].forEach(txt=>{
         const th = document.createElement('th'); th.textContent = txt; headRow.appendChild(th);
       });
       detailThead.appendChild(headRow);
@@ -203,7 +191,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
       data.details.forEach(d=>{
         const dtr = document.createElement('tr');
         const checkCount = getChecksCount(d.serial, dateFrom, dateTo, secondCounts);
-        [d.serial, d.statusE, d.statusH, d.matrixStatus, d.description, checkCount].forEach(val=>{
+        [checkCount, d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
           const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
         });
         detailTbody.appendChild(dtr);
