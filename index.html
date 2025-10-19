@@ -1,137 +1,199 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LCDR LIVE DATA 2025</title>
-  <style>
-    body {
-      background: url("https://raw.githubusercontent.com/iDLC1990/test/main/pexels-iriser-1366957.jpg") no-repeat center center fixed;
-      background-size: cover;
-      color: #fff;
-      font-family: Arial, sans-serif;
-    }
-    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 10%; background-color: rgba(0,0,0,0.39); flex-wrap: wrap; }
-    .header h1 { margin: 0; color: #00cccc; font-size: 24px; }
-    .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-    .date-info { color: #00cccc; font-size: 18px; }
-    input[type="date"] { padding: 6px 10px; font-size: 16px; border-radius: 5px; border: none; }
-    #stats-container { width: 90%; margin: 24px auto; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; background-color: rgba(0,0,0,0.8); color: #fff; }
-    th, td { border: 1px solid #555; padding: 8px 10px; text-align: center; font-size: 14px; }
-    th { background-color: #00415096; font-weight: bold; position: sticky; top: 0; z-index: 1; }
-    td:first-child { background-color: #00415096; font-weight: bold; text-align: left; position: sticky; left: 0; z-index: 1; }
-    th.total-col, td.total-col { background-color: #00415096; font-weight: bold; }
-    tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LCDR LIVE DATA 2025</title>
+<style>
+body {
+  background: url("https://raw.githubusercontent.com/iDLC1990/test/main/pexels-iriser-1366957.jpg") no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+.header { display: flex; justify-content: space-between; align-items: center; padding: 20px 10%; background-color: rgba(0,0,0,0.39); flex-wrap: wrap; }
+.header h1 { margin: 0; color: #00cccc; font-size: 24px; }
+.controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.date-info { color: #00cccc; font-size: 18px; }
+input[type="date"] { padding: 6px 10px; font-size: 16px; border-radius: 5px; border: none; }
+#stats-container { width: 95%; margin: 24px auto; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background-color: rgba(0,0,0,0.8); color: #fff; }
+th, td { border: 1px solid #555; padding: 8px 10px; text-align: center; font-size: 14px; }
+th { background-color: #00415096; font-weight: bold; position: sticky; top: 0; z-index: 1; }
+td:first-child { background-color: #00415096; font-weight: bold; text-align: left; cursor: pointer; }
+th.total-col, td.total-col { background-color: #00415096; font-weight: bold; }
+tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
+.detail-row td { background-color: rgba(0,128,128,0.2); text-align: left; font-size: 13px; }
+.detail-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+.detail-table th, .detail-table td { border: 1px solid #555; padding: 4px 6px; font-size: 13px; }
+</style>
 </head>
 <body>
-  <div class="header">
-    <h1>LCDR LIVE DATA 2025</h1>
-    <div class="controls">
-      <label class="date-info">Od:</label>
-      <input type="date" id="date-from"/>
-      <label class="date-info">Do:</label>
-      <input type="date" id="date-to"/>
-      <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
-    </div>
+<div class="header">
+  <h1>LCDR LIVE DATA 2025</h1>
+  <div class="controls">
+    <label class="date-info">Od:</label>
+    <input type="date" id="date-from"/>
+    <label class="date-info">Do:</label>
+    <input type="date" id="date-to"/>
+    <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
   </div>
+</div>
 
-  <div id="stats-container"></div>
+<div id="stats-container"></div>
 
-  <script>
-    const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
-    const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
-    const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
+<script>
+const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
+const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
+const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
 
-    async function getData(sheetName){
-      try{
-        const response = await fetch(`${sheetURL}${encodeURIComponent(sheetName)}?key=${apiKey}`);
-        const data = await response.json();
-        return data.values || [];
-      }catch(err){
-        console.error('Ошибка получения данных:', err);
-        return [];
-      }
-    }
+async function getData(sheetName){
+  try{
+    const response = await fetch(`${sheetURL}${encodeURIComponent(sheetName)}?key=${apiKey}`);
+    const data = await response.json();
+    return data.values || [];
+  }catch(err){
+    console.error('Ошибка получения данных:', err);
+    return [];
+  }
+}
 
-    async function fetchData(){
-      const sheetNames = ['FI Station KOVALCHYK Y.','FI Station 2 ULANOVYCH.R'];
-      let combined = [];
-      for(const name of sheetNames){
-        const sheetData = await getData(name);
-        if(sheetData.length<2) continue;
-        const rows = sheetData.slice(1);
-        const mapped = rows.map(row=>({
-          date: row[0]||'',
-          status: (row[4]||'').toUpperCase(),
-          person: row[5]||''
-        }));
-        combined = combined.concat(mapped);
-      }
-      return combined;
-    }
+async function fetchData(){
+  const sheetNames = ['FI Station KOVALCHYK Y.','FI Station 2 ULANOVYCH.R'];
+  let combined = [];
+  for(const name of sheetNames){
+    const sheetData = await getData(name);
+    if(sheetData.length<2) continue;
+    const rows = sheetData.slice(1);
+    const mapped = rows.map(row=>({
+      date: row[0]||'',
+      serial: row[2]||'',
+      statusE: (row[4]||'').toUpperCase(),
+      statusH: row[7]||'',
+      matrixStatus: row[9]||'',
+      description: row[10]||'',
+      person: row[5]||''
+    }));
+    combined = combined.concat(mapped);
+  }
+  return combined;
+}
 
-    async function update(){
-      const dateFrom = document.getElementById('date-from').value;
-      const dateTo = document.getElementById('date-to').value;
-      if(!dateFrom || !dateTo) return;
+async function update(){
+  const dateFrom = document.getElementById('date-from').value;
+  const dateTo = document.getElementById('date-to').value;
+  if(!dateFrom || !dateTo) return;
 
-      const allData = await fetchData();
-      const filtered = allData.filter(d=>{
-        const dDate = d.date.split(' ')[0];
-        return dDate >= dateFrom && dDate <= dateTo;
-      });
+  const allData = await fetchData();
+  const filtered = allData.filter(d=>{
+    const dDate = d.date.split(' ')[0];
+    return dDate >= dateFrom && dDate <= dateTo;
+  });
 
-      const stats = {};
-      filtered.forEach(({status, person})=>{
-        if(!person || !status) return;
-        if(!stats[person]) stats[person] = { ok:0, ndf:0, waiting:0, scrap:0 };
-        if(status === 'OK') stats[person].ok++;
-        else if(status === 'NDF') stats[person].ndf++;
-        else if(status.includes('WAITING')) stats[person].waiting++;
-        else if(status.includes('SCRAP')) stats[person].scrap++;
-      });
+  const stats = {};
+  filtered.forEach(({statusE, person})=>{
+    if(!person || !statusE) return;
+    if(!stats[person]) stats[person] = { ok:0, ndf:0, waiting:0, scrap:0, details: [] };
+    if(statusE === 'OK') stats[person].ok++;
+    else if(statusE === 'NDF') stats[person].ndf++;
+    else if(statusE.includes('WAITING')) stats[person].waiting++;
+    else if(statusE.includes('SCRAP')) stats[person].scrap++;
+  });
 
-      renderTable(stats);
-    }
+  // Добавляем детали к каждой фамилии
+  filtered.forEach(row => {
+    if(!row.person) return;
+    if(!stats[row.person].details) stats[row.person].details = [];
+    stats[row.person].details.push({
+      serial: row.serial,
+      statusE: row.statusE,
+      statusH: row.statusH,
+      matrixStatus: row.matrixStatus,
+      description: row.description
+    });
+  });
 
-    function renderTable(stats){
-      const container = document.getElementById('stats-container');
-      container.innerHTML = '';
-      const people = Object.keys(stats);
-      if(people.length === 0){
-        container.innerHTML = '<p style="text-align:center; margin-top:20px;">Brak danych</p>';
+  renderTable(stats);
+}
+
+function renderTable(stats){
+  const container = document.getElementById('stats-container');
+  container.innerHTML = '';
+  const people = Object.keys(stats);
+  if(people.length === 0){
+    container.innerHTML = '<p style="text-align:center; margin-top:20px;">Brak danych</p>';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Name', 'OK', 'NDF', 'Waiting', 'Scrap', 'Total (OK+NDF)'].forEach(text=>{
+    const th = document.createElement('th'); th.textContent = text; headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  people.forEach(person=>{
+    const tr = document.createElement('tr');
+    const data = stats[person];
+
+    // Главная строка
+    const tdName = document.createElement('td'); 
+    tdName.textContent = person; 
+    tdName.style.cursor = 'pointer';
+    tdName.addEventListener('click', ()=>{
+      // Проверка, есть ли уже раскрытая строка
+      const nextTr = tr.nextSibling;
+      if(nextTr && nextTr.classList.contains('detail-row')){
+        nextTr.remove();
         return;
       }
-
-      const table = document.createElement('table');
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      ['Name', 'OK', 'NDF', 'Waiting', 'Scrap', 'Total (OK+NDF)'].forEach(text=>{
-        const th = document.createElement('th'); th.textContent = text; headerRow.appendChild(th);
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'detail-row';
+      const detailTd = document.createElement('td');
+      detailTd.colSpan = 6;
+      // Создаем вложенную таблицу деталей
+      const detailTable = document.createElement('table');
+      detailTable.className = 'detail-table';
+      const detailThead = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      ['Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description'].forEach(txt=>{
+        const th = document.createElement('th'); th.textContent = txt; headRow.appendChild(th);
       });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      const tbody = document.createElement('tbody');
-      people.forEach(person=>{
-        const tr = document.createElement('tr');
-        const data = stats[person];
-        const tdName = document.createElement('td'); tdName.textContent = person; tr.appendChild(tdName);
-        const tdOK = document.createElement('td'); tdOK.textContent = data.ok; tr.appendChild(tdOK);
-        const tdNDF = document.createElement('td'); tdNDF.textContent = data.ndf; tr.appendChild(tdNDF);
-        const tdWaiting = document.createElement('td'); tdWaiting.textContent = data.waiting; tr.appendChild(tdWaiting);
-        const tdScrap = document.createElement('td'); tdScrap.textContent = data.scrap; tr.appendChild(tdScrap);
-        const tdTotal = document.createElement('td'); tdTotal.textContent = data.ok + data.ndf; tr.appendChild(tdTotal);
-        tbody.appendChild(tr);
+      detailThead.appendChild(headRow);
+      detailTable.appendChild(detailThead);
+      const detailTbody = document.createElement('tbody');
+      data.details.forEach(d=>{
+        const dtr = document.createElement('tr');
+        [d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
+          const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
+        });
+        detailTbody.appendChild(dtr);
       });
+      detailTable.appendChild(detailTbody);
+      detailTd.appendChild(detailTable);
+      detailTr.appendChild(detailTd);
+      tr.parentNode.insertBefore(detailTr, tr.nextSibling);
+    });
+    tr.appendChild(tdName);
 
-      table.appendChild(tbody);
-      container.appendChild(table);
-    }
+    const tdOK = document.createElement('td'); tdOK.textContent = data.ok; tr.appendChild(tdOK);
+    const tdNDF = document.createElement('td'); tdNDF.textContent = data.ndf; tr.appendChild(tdNDF);
+    const tdWaiting = document.createElement('td'); tdWaiting.textContent = data.waiting; tr.appendChild(tdWaiting);
+    const tdScrap = document.createElement('td'); tdScrap.textContent = data.scrap; tr.appendChild(tdScrap);
+    const tdTotal = document.createElement('td'); tdTotal.textContent = data.ok + data.ndf; tr.appendChild(tdTotal);
 
-    document.getElementById('update-btn').addEventListener('click', update);
-  </script>
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+document.getElementById('update-btn').addEventListener('click', update);
+</script>
 </body>
 </html>
