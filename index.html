@@ -47,6 +47,10 @@ const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
 const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
 const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
 
+// Вторая таблица для подсчета проверок
+const secondSheetId = '1UWu4bcuHg6NHhK8ZvjDlQAIue6R1FLBlmAlBhHBj-D8';
+const secondSheetName = '123';
+
 async function getData(sheetName){
   try{
     const response = await fetch(`${sheetURL}${encodeURIComponent(sheetName)}?key=${apiKey}`);
@@ -58,7 +62,8 @@ async function getData(sheetName){
   }
 }
 
-async function fetchData(){
+// Получаем данные первой таблицы
+async function fetchMainData(){
   const sheetNames = ['FI Station KOVALCHYK Y.','FI Station 2 ULANOVYCH.R'];
   let combined = [];
   for(const name of sheetNames){
@@ -79,12 +84,48 @@ async function fetchData(){
   return combined;
 }
 
+// Получаем данные второй таблицы для подсчета проверок
+async function fetchSecondSheetData(){
+  try{
+    const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${secondSheetId}/values/${encodeURIComponent(secondSheetName)}?key=${apiKey}`);
+    const data = await response.json();
+    const rows = data.values || [];
+    const counts = {}; // counts[serial][date] = количество проверок
+    rows.slice(1).forEach(row => {
+      const serial = row[0];
+      const date = row[1]?.split(' ')[0];
+      if(!serial || !date) return;
+      if(!counts[serial]) counts[serial]={};
+      counts[serial][date] = (counts[serial][date] || 0) + 1;
+    });
+    return counts;
+  }catch(err){
+    console.error('Ошибка второй таблицы', err);
+    return {};
+  }
+}
+
+// Получаем количество проверок для серийного номера за период
+function getChecksCount(serial, dateFrom, dateTo, counts){
+  if(!counts[serial]) return 0;
+  let total = 0;
+  const from = new Date(dateFrom), to = new Date(dateTo);
+  for(const d in counts[serial]){
+    const checkDate = new Date(d);
+    if(checkDate >= from && checkDate <= to){
+      total += counts[serial][d];
+    }
+  }
+  return total;
+}
+
 async function update(){
   const dateFrom = document.getElementById('date-from').value;
   const dateTo = document.getElementById('date-to').value;
   if(!dateFrom || !dateTo) return;
 
-  const allData = await fetchData();
+  const [allData, secondCounts] = await Promise.all([fetchMainData(), fetchSecondSheetData()]);
+
   const filtered = allData.filter(d=>{
     const dDate = d.date.split(' ')[0];
     return dDate >= dateFrom && dDate <= dateTo;
@@ -100,29 +141,16 @@ async function update(){
     else if(statusE.includes('SCRAP')) stats[person].scrap++;
   });
 
-  // Добавляем детали к каждой фамилии
   filtered.forEach(row => {
     if(!row.person) return;
     if(!stats[row.person].details) stats[row.person].details = [];
     stats[row.person].details.push(row);
   });
 
-  renderTable(stats, dateFrom, dateTo);
+  renderTable(stats, dateFrom, dateTo, secondCounts);
 }
 
-// Подсчет количества проверок за выбранный день для каждого серийного номера
-function countChecksForDay(details, dateFrom, dateTo){
-  const counts = {};
-  details.forEach(d => {
-    const dDate = d.date?.split(' ')[0];
-    if(dDate >= dateFrom && dDate <= dateTo){
-      counts[d.serial] = (counts[d.serial] || 0) + 1;
-    }
-  });
-  return counts;
-}
-
-function renderTable(stats, dateFrom, dateTo){
+function renderTable(stats, dateFrom, dateTo, secondCounts){
   const container = document.getElementById('stats-container');
   container.innerHTML = '';
   const people = Object.keys(stats);
@@ -146,7 +174,6 @@ function renderTable(stats, dateFrom, dateTo){
     const tr = document.createElement('tr');
     const data = stats[person];
 
-    // Главная строка
     const tdName = document.createElement('td'); 
     tdName.textContent = person; 
     tdName.addEventListener('click', ()=>{
@@ -156,16 +183,14 @@ function renderTable(stats, dateFrom, dateTo){
         return;
       }
 
-      const detailCounts = countChecksForDay(data.details, dateFrom, dateTo);
-
       const detailTr = document.createElement('tr');
       detailTr.className = 'detail-row';
       const detailTd = document.createElement('td');
-      detailTd.colSpan = 7; // увеличиваем на новый столбец
+      detailTd.colSpan = 7;
+
       const detailTable = document.createElement('table');
       detailTable.className = 'detail-table';
 
-      // Заголовки
       const detailThead = document.createElement('thead');
       const headRow = document.createElement('tr');
       ['Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description', 'Checks Today'].forEach(txt=>{
@@ -174,11 +199,10 @@ function renderTable(stats, dateFrom, dateTo){
       detailThead.appendChild(headRow);
       detailTable.appendChild(detailThead);
 
-      // Тело
       const detailTbody = document.createElement('tbody');
       data.details.forEach(d=>{
         const dtr = document.createElement('tr');
-        const checkCount = detailCounts[d.serial] || 0;
+        const checkCount = getChecksCount(d.serial, dateFrom, dateTo, secondCounts);
         [d.serial, d.statusE, d.statusH, d.matrixStatus, d.description, checkCount].forEach(val=>{
           const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
         });
