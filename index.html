@@ -1,81 +1,195 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="pl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Данные за последнюю дату</title>
-<style>
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #000; padding: 5px; text-align: left; }
-  th { background-color: #f0f0f0; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LCDR LIVE DATA 2025</title>
+  <style>
+    body {
+      background: url("https://raw.githubusercontent.com/iDLC1990/test/main/pexels-iriser-1366957.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 10%; background-color: rgba(0,0,0,0.39); flex-wrap: wrap; }
+    .header h1 { margin: 0; color: #00cccc; font-size: 24px; }
+    .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .date-info { color: #00cccc; font-size: 18px; }
+    input[type="date"] { padding: 6px 10px; font-size: 16px; border-radius: 5px; border: none; }
+    #stats-container { width: 90%; margin: 24px auto; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background-color: rgba(0,0,0,0.8); color: #fff; }
+    th, td { border: 1px solid #555; padding: 8px 10px; text-align: center; font-size: 14px; white-space: nowrap; }
+    th { background-color: #00415096; font-weight: bold; position: sticky; top: 0; z-index: 1; cursor: pointer; }
+    td:first-child { background-color: ##00415096; font-weight: bold; text-align: left; position: sticky; left: 0; z-index: 1; }
+    th.total-col, td.total-col { background-color: #00415096; font-weight: bold; }
+    tfoot td { background-color: #00505000; font-weight: bold; }
+  </style>
 </head>
 <body>
-<h1>Данные за последнюю дату</h1>
-<table id="sheetData">
-  <thead><tr id="headerRow"></tr></thead>
-  <tbody></tbody>
-</table>
+  <div class="header">
+    <h1>LCDR LIVE DATA 2025</h1>
+    <div class="controls">
+      <label class="date-info">Od:</label>
+      <input type="date" id="date-from"/>
+      <label class="date-info">Do:</label>
+      <input type="date" id="date-to"/>
+      <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
+    </div>
+  </div>
 
-<script>
-const sheetID = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
-const sheetName = 'FI Station 2 ULANOVYCH.R';
-const refreshInterval = 10000;
+  <div id="stats-container"></div>
 
-const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+  <script>
+    const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
+    const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
+    const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
+    const validStatuses = ['OK', 'NDF'];
 
-function fetchAndRenderSheet() {
-  fetch(sheetUrl)
-    .then(res => res.text())
-    .then(data => {
-      // Убираем обёртку google.visualization.Query.setResponse(...)
-      const json = JSON.parse(data.match(/\(([\s\S]+)\)/)[1]);
-      const rows = json.table.rows;
-      const cols = json.table.cols;
+    const diagonalMapPrefix = { 'WH8':55,'WC8':32,'WU0':43,'SQ1':43,'WM5':50,'WC7':32,'WP5':65,'WW1':75,'WM6':50 };
+    const diagonalMap = {
+      '860':86,'850':85,'750':75,'700':70,'650':65,'580':58,'575':58,
+      '550':55,'545':55,'500':50,'498':50,'495':50,'490':50,
+      '438':43,'435':43,'430':43,'428':43,'425':43,'420':43,
+      '418':43,'415':43,'398':43,'395':43,'390':43,
+      '348':32,'345':32,'340':32,'328':32,'325':32,'320':32,
+      '318':32,'315':32,'278':27,'275':27,'270':27,
+      '248':24,'245':24,'240':24,'238':24,'235':24,'230':24
+    };
 
-      const headerRow = document.getElementById('headerRow');
-      const tbody = document.querySelector('#sheetData tbody');
-      tbody.innerHTML = '';
+    function getDiagonals(serial){
+      if(!serial || serial.length<6) return [];
+      const upper = serial.toUpperCase();
+      const result = new Set();
+      const match = upper.match(/^[A-Z]{3}(\d{3})/);
+      if(match && diagonalMap[match[1]]) result.add(diagonalMap[match[1]]);
+      const prefix = upper.slice(0,3);
+      if(diagonalMapPrefix[prefix]) result.add(diagonalMapPrefix[prefix]);
+      return [...result];
+    }
 
-      // Заголовки один раз
-      if (headerRow.children.length === 0) {
-        cols.forEach(col => {
-          const th = document.createElement('th');
-          th.textContent = col.label;
-          headerRow.appendChild(th);
-        });
+    async function getData(sheetName){
+      try{
+        const response = await fetch(`${sheetURL}${encodeURIComponent(sheetName)}?key=${apiKey}`);
+        const data = await response.json();
+        return data.values || [];
+      }catch(err){
+        console.error('Ошибка получения данных:', err);
+        return [];
       }
+    }
 
-      // Находим последнюю дату (YYYY-MM-DD)
-      let lastDate = '';
-      rows.forEach(row => {
-        const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
-        if (cellDateTime && (!lastDate || cellDateTime > lastDate)) {
-          lastDate = cellDateTime;
-        }
+    async function fetchData(){
+      const sheetNames = ['FI Station KOVALCHYK Y.','FI Station 2 ULANOVYCH.R'];
+      let combined = [];
+      for(const name of sheetNames){
+        const sheetData = await getData(name);
+        if(sheetData.length<2) continue;
+        const rows = sheetData.slice(1);
+        const mapped = rows.map(row=>({
+          date: row[0]||'',
+          serial: row[2]||'',
+          status: (row[4]||'').toUpperCase(),
+          person: row[5]||''
+        }));
+        combined = combined.concat(mapped);
+      }
+      return combined;
+    }
+
+    function calculateDetailedStats(data){
+      const stats = {};
+      data.forEach(({date, serial, status, person})=>{
+        if(!validStatuses.includes(status)) return;
+        const diagonals = getDiagonals(serial);
+        if(diagonals.length===0) return;
+        if(!stats[person]) stats[person]={};
+        diagonals.forEach(diagonal=>{
+          if(!stats[person][diagonal]) stats[person][diagonal]={ sum:0, days:new Set() };
+          stats[person][diagonal].sum++;
+          const day = date.split(' ')[0];
+          if(day) stats[person][diagonal].days.add(day);
+        });
+      });
+      return stats;
+    }
+
+    async function update(){
+      const dateFrom = document.getElementById('date-from').value;
+      const dateTo = document.getElementById('date-to').value;
+      if(!dateFrom || !dateTo) return;
+
+      const allData = await fetchData();
+      const filtered = allData.filter(d=>{
+        const dDate = d.date.split(' ')[0];
+        return dDate >= dateFrom && dDate <= dateTo;
       });
 
-      // Выводим только строки с этой датой
-      rows.forEach(row => {
-        const cellDateTime = row.c[0] ? row.c[0].v.substring(0,10) : '';
-        if (cellDateTime === lastDate) {
-          const tr = document.createElement('tr');
-          row.c.forEach(cell => {
-            const td = document.createElement('td');
-            td.textContent = cell ? cell.v : '';
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        }
-      });
-    })
-    .catch(err => console.error('Ошибка загрузки данных:', err));
-}
+      const stats = calculateDetailedStats(filtered);
+      renderTable(stats);
+    }
 
-// Первая загрузка
-fetchAndRenderSheet();
-// Автообновление каждые 10 секунд
-setInterval(fetchAndRenderSheet, refreshInterval);
-</script>
+    function renderTable(stats){
+      const container=document.getElementById('stats-container'); 
+      container.innerHTML='';
+      const diagonals=Array.from(new Set(Object.values(stats).flatMap(p=>Object.keys(p).map(Number)))).sort((a,b)=>b-a);
+      let people=Object.keys(stats);
+      if(people.length===0){ container.innerHTML='<p style="text-align:center; margin-top:20px;">Brak danych</p>'; return; }
+
+      const totalPerDiagonal={}; diagonals.forEach(d=>totalPerDiagonal[d]=0);
+      const personTotals={};
+      const personDays={};
+      people.forEach(person=>{
+        let total=0;
+        diagonals.forEach(d=>{
+          if(stats[person][d]){
+            total+=stats[person][d].sum;
+            totalPerDiagonal[d]+=stats[person][d].sum;
+          }
+        });
+        personTotals[person]=total;
+        const allDays = new Set();
+        diagonals.forEach(d=>{
+          if(stats[person][d]){
+            stats[person][d].days.forEach(day => allDays.add(day));
+          }
+        });
+        personDays[person] = allDays.size;
+      });
+      people=people.sort((a,b)=>(personTotals[b]||0)-(personTotals[a]||0));
+
+      const table=document.createElement('table');
+      const thead=document.createElement('thead'); 
+      const headerRow=document.createElement('tr');
+      const thName=document.createElement('th'); thName.textContent='Name'; headerRow.appendChild(thName);
+      diagonals.forEach(d=>{ const th=document.createElement('th'); th.textContent=d; headerRow.appendChild(th); });
+      const thTotal=document.createElement('th'); thTotal.textContent='Total'; thTotal.className='total-col'; headerRow.appendChild(thTotal);
+      const thDays=document.createElement('th'); thDays.textContent='Dni obecności'; thDays.className='total-col'; headerRow.appendChild(thDays);
+      thead.appendChild(headerRow); table.appendChild(thead);
+
+      const tbody=document.createElement('tbody');
+      const globalTotal=Object.values(personTotals).reduce((a,b)=>a+b,0);
+      people.forEach(person=>{
+        const tr=document.createElement('tr');
+        const tdName=document.createElement('td'); tdName.textContent=person; tr.appendChild(tdName);
+        diagonals.forEach(d=>{ const td=document.createElement('td'); td.textContent=stats[person][d]?stats[person][d].sum:'-'; tr.appendChild(td); });
+        const tdTotal=document.createElement('td'); tdTotal.textContent=personTotals[person]; tdTotal.classList.add('total-col'); tr.appendChild(tdTotal);
+        const tdDays=document.createElement('td'); tdDays.textContent=personDays[person]; tdDays.classList.add('total-col'); tr.appendChild(tdDays);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      const tfoot=document.createElement('tfoot'); 
+      const footerRow=document.createElement('tr');
+      const tdLabel=document.createElement('td'); tdLabel.textContent='Total Repaired'; footerRow.appendChild(tdLabel);
+      diagonals.forEach(d=>{ const td=document.createElement('td'); td.textContent=totalPerDiagonal[d]; td.classList.add('total-col'); footerRow.appendChild(td); });
+      const tdGlobalTotal=document.createElement('td'); tdGlobalTotal.textContent=globalTotal; tdGlobalTotal.classList.add('total-col'); footerRow.appendChild(tdGlobalTotal);
+      const tdEmpty=document.createElement('td'); tdEmpty.textContent=''; tdEmpty.classList.add('total-col'); footerRow.appendChild(tdEmpty);
+      tfoot.appendChild(footerRow); table.appendChild(tfoot);
+
+      container.appendChild(table);
+    }
+
+    document.getElementById('update-btn').addEventListener('click', update);
+  </script>
 </body>
 </html>
