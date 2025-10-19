@@ -104,19 +104,25 @@ async function update(){
   filtered.forEach(row => {
     if(!row.person) return;
     if(!stats[row.person].details) stats[row.person].details = [];
-    stats[row.person].details.push({
-      serial: row.serial,
-      statusE: row.statusE,
-      statusH: row.statusH,
-      matrixStatus: row.matrixStatus,
-      description: row.description
-    });
+    stats[row.person].details.push(row);
   });
 
-  renderTable(stats);
+  renderTable(stats, dateFrom, dateTo);
 }
 
-function renderTable(stats){
+// Подсчет количества проверок за выбранный день для каждого серийного номера
+function countChecksForDay(details, dateFrom, dateTo){
+  const counts = {};
+  details.forEach(d => {
+    const dDate = d.date?.split(' ')[0];
+    if(dDate >= dateFrom && dDate <= dateTo){
+      counts[d.serial] = (counts[d.serial] || 0) + 1;
+    }
+  });
+  return counts;
+}
+
+function renderTable(stats, dateFrom, dateTo){
   const container = document.getElementById('stats-container');
   container.innerHTML = '';
   const people = Object.keys(stats);
@@ -143,32 +149,37 @@ function renderTable(stats){
     // Главная строка
     const tdName = document.createElement('td'); 
     tdName.textContent = person; 
-    tdName.style.cursor = 'pointer';
     tdName.addEventListener('click', ()=>{
-      // Проверка, есть ли уже раскрытая строка
       const nextTr = tr.nextSibling;
       if(nextTr && nextTr.classList.contains('detail-row')){
         nextTr.remove();
         return;
       }
+
+      const detailCounts = countChecksForDay(data.details, dateFrom, dateTo);
+
       const detailTr = document.createElement('tr');
       detailTr.className = 'detail-row';
       const detailTd = document.createElement('td');
-      detailTd.colSpan = 6;
-      // Создаем вложенную таблицу деталей
+      detailTd.colSpan = 7; // увеличиваем на новый столбец
       const detailTable = document.createElement('table');
       detailTable.className = 'detail-table';
+
+      // Заголовки
       const detailThead = document.createElement('thead');
       const headRow = document.createElement('tr');
-      ['Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description'].forEach(txt=>{
+      ['Serial', 'Status(E)', 'Status(H)', 'Matrix Status', 'Description', 'Checks Today'].forEach(txt=>{
         const th = document.createElement('th'); th.textContent = txt; headRow.appendChild(th);
       });
       detailThead.appendChild(headRow);
       detailTable.appendChild(detailThead);
+
+      // Тело
       const detailTbody = document.createElement('tbody');
       data.details.forEach(d=>{
         const dtr = document.createElement('tr');
-        [d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
+        const checkCount = detailCounts[d.serial] || 0;
+        [d.serial, d.statusE, d.statusH, d.matrixStatus, d.description, checkCount].forEach(val=>{
           const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
         });
         detailTbody.appendChild(dtr);
