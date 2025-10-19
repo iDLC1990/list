@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LCDR LIVE DATA 2025</title>
+<style>
+body {
+  background: url("https://raw.githubusercontent.com/iDLC1990/test/main/pexels-iriser-1366957.jpg") no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+.header { display: flex; justify-content: space-between; align-items: center; padding: 20px 10%; background-color: rgba(0,0,0,0.39); flex-wrap: wrap; }
+.header h1 { margin: 0; color: #00cccc; font-size: 24px; }
+.controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+.date-info { color: #00cccc; font-size: 18px; }
+input[type="date"] { padding: 6px 10px; font-size: 16px; border-radius: 5px; border: none; }
+#stats-container { width: 95%; margin: 24px auto; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background-color: rgba(0,0,0,0.8); color: #fff; }
+th, td { border: 1px solid #555; padding: 8px 10px; text-align: center; font-size: 14px; }
+th { background-color: #00415096; font-weight: bold; position: sticky; top: 0; z-index: 1; }
+td:first-child { background-color: #00415096; font-weight: bold; text-align: left; cursor: pointer; }
+th.total-col, td.total-col { background-color: #00415096; font-weight: bold; }
+tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
+.detail-row td { background-color: rgba(0,128,128,0.2); text-align: left; font-size: 13px; }
+.detail-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+.detail-table th, .detail-table td { border: 1px solid #555; padding: 4px 6px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>LCDR LIVE DATA 2025</h1>
+  <div class="controls">
+    <label class="date-info">Od:</label>
+    <input type="date" id="date-from"/>
+    <label class="date-info">Do:</label>
+    <input type="date" id="date-to"/>
+    <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
+  </div>
+</div>
+
+<div id="stats-container"></div>
+
+<script>
+const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
+const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
+const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
+
+const secondSheetId = '1UWu4bcuHg6NHhK8ZvjDlQAIue6R1FLBlmAlBhHBj-D8';
+const secondSheetName = '123';
+
+async function fetchMainData(){
+  try{
+    const response = await fetch(`${sheetURL}${encodeURIComponent('FI Station 2 ULANOVYCH.R')}?key=${apiKey}`);
+    const data = await response.json();
+    const rows = data.values || [];
+    return rows.slice(1).map(row=>({
+      date: row[0]||'',
+      serial: row[2]||'',
+      statusE: (row[4]||'').toUpperCase(),
+      statusH: row[7]||'',
+      matrixStatus: row[9]||'',
+      description: row[10]||'',
+      person: row[5]||''
+    }));
+  }catch(err){
+    console.error('Ошибка получения данных первой таблицы', err);
+    return [];
+  }
+}
+
+async function fetchSecondSheetData(){
+  try{
+    const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${secondSheetId}/values/${encodeURIComponent(secondSheetName)}?key=${apiKey}`);
+    const data = await response.json();
+    const rows = data.values || [];
+    const counts = {};
+    rows.slice(1).forEach(row => {
+      const serial = row[0];
+      const date = row[1]?.split(' ')[0];
+      if(!serial || !date) return;
+      if(!counts[serial]) counts[serial]={};
+      counts[serial][date] = (counts[serial][date] || 0) + 1;
+    });
+    return counts;
+  }catch(err){
+    console.error('Ошибка второй таблицы', err);
+    return {};
+  }
+}
+
+function getChecksCount(serial, dateFrom, dateTo, counts){
+  if(!counts[serial]) return 0;
+  let total = 0;
+  const from = new Date(dateFrom), to = new Date(dateTo);
+  for(const d in counts[serial]){
+    const checkDate = new Date(d);
+    if(checkDate >= from && checkDate <= to){
+      total += counts[serial][d];
+    }
+  }
+  return total;
+}
+
+async function update(){
+  const dateFrom = document.getElementById('date-from').value;
+  const dateTo = document.getElementById('date-to').value;
+  if(!dateFrom || !dateTo) return;
+
+  const [allData, secondCounts] = await Promise.all([fetchMainData(), fetchSecondSheetData()]);
+
+  const filtered = allData.filter(d=>{
+    const dDate = d.date.split(' ')[0];
+    return dDate >= dateFrom && dDate <= dateTo;
+  });
+
+  const stats = {};
+  filtered.forEach(({statusE, person})=>{
+    if(!person || !statusE) return;
+    if(!stats[person]) stats[person] = { ok:0, ndf:0, waiting:0, scrap:0, details: [] };
+    if(statusE === 'OK') stats[person].ok++;
+    else if(statusE === 'NDF') stats[person].ndf++;
+    else if(statusE.includes('WAITING')) stats[person].waiting++;
+    else if(statusE.includes('SCRAP')) stats[person].scrap++;
+  });
+
+  filtered.forEach(row => {
+    if(!row.person) return;
+    if(!stats[row.person].details) stats[row.person].details = [];
+    stats[row.person].details.push(row);
+  });
+
+  renderTable(stats, dateFrom, dateTo, secondCounts);
+}
+
+function renderTable(stats, dateFrom, dateTo, secondCounts){
+  const container = document.getElementById('stats-container');
+  container.innerHTML = '';
+  const people = Object.keys(stats);
+  if(people.length === 0){
+    container.innerHTML = '<p style="text-align:center; margin-top:20px;">Brak danych</p>';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Name', 'OK', 'NDF', 'Waiting', 'Scrap', 'Total (OK+NDF)'].forEach(text=>{
+    const th = document.createElement('th'); th.textContent = text; headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  people.forEach(person=>{
+    const tr = document.createElement('tr');
+    const data = stats[person];
+
+    const tdName = document.createElement('td'); 
+    tdName.textContent = person; 
+    tdName.addEventListener('click', ()=>{
+      const nextTr = tr.nextSibling;
+      if(nextTr && nextTr.classList.contains('detail-row')){
+        nextTr.remove();
+        return;
+      }
+
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'detail-row';
+      const detailTd = document.createElement('td');
+      detailTd.colSpan = 7;
+
+      const detailTable = document.createElement('table');
+      detailTable.className = 'detail-table';
+
+      const detailThead = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      ['','Serial','STATUS','','NEW / NP','Description'].forEach(txt=>{
+        const th = document.createElement('th'); th.textContent = txt; headRow.appendChild(th);
+      });
+      detailThead.appendChild(headRow);
+      detailTable.appendChild(detailThead);
+
+      const detailTbody = document.createElement('tbody');
+      data.details.forEach(d=>{
+        const dtr = document.createElement('tr');
+        let checkCount = getChecksCount(d.serial, dateFrom, dateTo, secondCounts);
+        if(checkCount === 0) checkCount = ''; // пусто если нет проверок
+        [checkCount, d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
+          const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
+        });
+        detailTbody.appendChild(dtr);
+      });
+      detailTable.appendChild(detailTbody);
+      detailTd.appendChild(detailTable);
+      detailTr.appendChild(detailTd);
+      tr.parentNode.insertBefore(detailTr, tr.nextSibling);
+    });
+    tr.appendChild(tdName);
+
+    const tdOK = document.createElement('td'); tdOK.textContent = data.ok; tr.appendChild(tdOK);
+    const tdNDF = document.createElement('td'); tdNDF.textContent = data.ndf; tr.appendChild(tdNDF);
+    const tdWaiting = document.createElement('td'); tdWaiting.textContent = data.waiting; tr.appendChild(tdWaiting);
+    const tdScrap = document.createElement('td'); tdScrap.textContent = data.scrap; tr.appendChild(tdScrap);
+    const tdTotal = document.createElement('td'); tdTotal.textContent = data.ok + data.ndf; tr.appendChild(tdTotal);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  container.appendChild(table);
+}
+
+document.getElementById('update-btn').addEventListener('click', update);
+</script>
+</body>
+</html>
