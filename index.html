@@ -219,7 +219,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
 
 document.getElementById('update-btn').addEventListener('click', update);
 
-// --- Кнопка Convert to Excel ---
+// --- Экспорт в Excel с раскрывающимися деталями ---
 document.getElementById('export-btn').addEventListener('click', () => {
   const table = document.querySelector('#stats-container table');
   if (!table) {
@@ -227,8 +227,39 @@ document.getElementById('export-btn').addEventListener('click', () => {
     return;
   }
 
-  const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
-  XLSX.writeFile(wb, 'LCDR_LIVE_DATA.xlsx');
+  const wb = XLSX.utils.book_new();
+  const ws_data = [];
+
+  // Заголовки основной таблицы
+  ws_data.push(['Name', 'OK', 'NDF', 'Waiting', 'Scrap', 'Total (OK+NDF)']);
+
+  const tbody = table.querySelector('tbody');
+  for (let i = 0; i < tbody.rows.length; i++) {
+    const row = tbody.rows[i];
+    ws_data.push(Array.from(row.cells).map(td => td.textContent));
+
+    const next = row.nextElementSibling;
+    if (next && next.classList.contains('detail-row')) {
+      const detailTable = next.querySelector('table.detail-table');
+      if (detailTable) {
+        const detailRows = detailTable.querySelectorAll('tr');
+        ws_data.push([]);
+        detailRows.forEach((dtr, index) => {
+          const cells = Array.from(dtr.cells).map(td => td.textContent);
+          if(index === 0){
+            ws_data.push(cells); // заголовок деталей
+          } else {
+            ws_data.push(['', ...cells]); // вложенные строки с отступом
+          }
+        });
+        ws_data.push([]);
+      }
+    }
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'LCDR_LIVE_DATA_with_details.xlsx');
 });
 </script>
 </body>
