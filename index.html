@@ -26,7 +26,10 @@ tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
 .detail-row td { background-color: rgba(0,128,128,0.2); text-align: left; font-size: 13px; }
 .detail-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
 .detail-table th, .detail-table td { border: 1px solid #555; padding: 4px 6px; font-size: 13px; }
+tbody tr:hover { background-color: rgba(0, 255, 255, 0.2); }
 </style>
+<!-- Подключаем библиотеку SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="header">
@@ -37,6 +40,7 @@ tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
     <label class="date-info">Do:</label>
     <input type="date" id="date-to"/>
     <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
+    <button id="export-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#007070; color:#fff; cursor:pointer;">Convert to Excel</button>
   </div>
 </div>
 
@@ -56,7 +60,7 @@ async function fetchMainData(){
     const data = await response.json();
     const rows = data.values || [];
     return rows.slice(1).map(row=>({
-      date: row[0]||'',       // Дата берётся из столбца A
+      date: row[0]||'',
       serial: row[2]||'',
       statusE: (row[4]||'').toUpperCase(),
       statusH: row[7]||'',
@@ -110,10 +114,9 @@ async function update(){
 
   const [allData, secondCounts] = await Promise.all([fetchMainData(), fetchSecondSheetData()]);
 
-  // Фильтруем по дате из столбца A
   const filtered = allData.filter(d=>{
-    const dDate = d.date.split(' ')[0];
-    return dDate >= dateFrom && dDate <= dateTo;
+    const dDate = new Date(d.date.split(' ')[0]);
+    return dDate >= new Date(dateFrom) && dDate <= new Date(dateTo);
   });
 
   const stats = {};
@@ -188,7 +191,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
       data.details.forEach(d=>{
         const dtr = document.createElement('tr');
         let checkCount = getChecksCount(d.serial, dateFrom, dateTo, secondCounts);
-        if(checkCount === 0) checkCount = ''; // пусто если нет проверок
+        if(checkCount === 0) checkCount = ''; 
         [checkCount, d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
           const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
         });
@@ -215,6 +218,18 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
 }
 
 document.getElementById('update-btn').addEventListener('click', update);
+
+// --- Кнопка Convert to Excel ---
+document.getElementById('export-btn').addEventListener('click', () => {
+  const table = document.querySelector('#stats-container table');
+  if (!table) {
+    alert('Нет таблицы для экспорта!');
+    return;
+  }
+
+  const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet1" });
+  XLSX.writeFile(wb, 'LCDR_LIVE_DATA.xlsx');
+});
 </script>
 </body>
 </html>
