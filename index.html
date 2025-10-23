@@ -16,6 +16,14 @@ body {
 .controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .date-info { color: #00cccc; font-size: 18px; }
 input[type="date"] { padding: 6px 10px; font-size: 16px; border-radius: 5px; border: none; }
+
+#auto-timer {
+  color:#00ffea;
+  font-size:16px;
+  font-weight:bold;
+  margin-left:10px;
+}
+
 #stats-container { width: 95%; margin: 24px auto; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; background-color: rgba(0,0,0,0.8); color: #fff; }
 th, td { border: 1px solid #555; padding: 8px 10px; text-align: center; font-size: 14px; }
@@ -37,6 +45,9 @@ tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
     <label class="date-info">Do:</label>
     <input type="date" id="date-to"/>
     <button id="update-btn" style="padding:6px 12px; border:none; border-radius:5px; background-color:#005050; color:#fff; cursor:pointer;">Aktualizuj</button>
+
+    <!-- ТАЙМЕР -->
+    <div id="auto-timer">Auto refresh in: --:--</div>
   </div>
 </div>
 
@@ -46,17 +57,38 @@ tbody tr:nth-child(even) { background-color: rgba(0,0,0,0.6); }
 const apiKey = 'AIzaSyCP7tzYiGwIZ6cymLAlv_9QgPIEshnRgqI';
 const sheetId = '10W03bvKlVFlIUcxsHkzP_v_13gtnYRBmnrrO0ujB1bU';
 const sheetURL = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/`;
-
 const secondSheetId = '1UWu4bcuHg6NHhK8ZvjDlQAIue6R1FLBlmAlBhHBj-D8';
 const secondSheetName = '123';
 
+let refreshInterval = 300000; // 5 minutes
+let countdown = refreshInterval / 1000;
+let countdownTimer;
+
+// === AUTO TIMER ===
+function startCountdown() {
+  clearInterval(countdownTimer);
+  countdown = refreshInterval / 1000;
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('auto-timer').textContent =
+      `Auto refresh in: ${Math.floor(countdown/60)}:${String(countdown%60).padStart(2,'0')}`;
+    if (countdown <= 0) {
+      update();
+    }
+  }, 1000);
+}
+
+// AUTO UPDATE
+setInterval(update, refreshInterval);
+
+// === API FUNCTIONS ===
 async function fetchMainData(){
   try{
     const response = await fetch(`${sheetURL}${encodeURIComponent('FI Station 2 ULANOVYCH.R')}?key=${apiKey}`);
     const data = await response.json();
     const rows = data.values || [];
     return rows.slice(1).map(row=>({
-      date: row[0]||'',       // Дата берётся из столбца A
+      date: row[0]||'',
       serial: row[2]||'',
       statusE: (row[4]||'').toUpperCase(),
       statusH: row[7]||'',
@@ -103,6 +135,7 @@ function getChecksCount(serial, dateFrom, dateTo, counts){
   return total;
 }
 
+// === UPDATE TABLE ===
 async function update(){
   const dateFrom = document.getElementById('date-from').value;
   const dateTo = document.getElementById('date-to').value;
@@ -110,7 +143,6 @@ async function update(){
 
   const [allData, secondCounts] = await Promise.all([fetchMainData(), fetchSecondSheetData()]);
 
-  // Фильтруем по дате из столбца A
   const filtered = allData.filter(d=>{
     const dDate = d.date.split(' ')[0];
     return dDate >= dateFrom && dDate <= dateTo;
@@ -128,11 +160,13 @@ async function update(){
 
   filtered.forEach(row => {
     if(!row.person) return;
-    if(!stats[row.person].details) stats[row.person].details = [];
     stats[row.person].details.push(row);
   });
 
   renderTable(stats, dateFrom, dateTo, secondCounts);
+
+  // restart auto timer
+  startCountdown();
 }
 
 function renderTable(stats, dateFrom, dateTo, secondCounts){
@@ -188,7 +222,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
       data.details.forEach(d=>{
         const dtr = document.createElement('tr');
         let checkCount = getChecksCount(d.serial, dateFrom, dateTo, secondCounts);
-        if(checkCount === 0) checkCount = ''; // пусто если нет проверок
+        if(checkCount === 0) checkCount = '';
         [checkCount, d.serial, d.statusE, d.statusH, d.matrixStatus, d.description].forEach(val=>{
           const td = document.createElement('td'); td.textContent = val; dtr.appendChild(td);
         });
@@ -214,6 +248,7 @@ function renderTable(stats, dateFrom, dateTo, secondCounts){
   container.appendChild(table);
 }
 
+// button
 document.getElementById('update-btn').addEventListener('click', update);
 </script>
 </body>
