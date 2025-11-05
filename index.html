@@ -112,7 +112,7 @@ async function fetchSecondSheetData(){
       const serial = row[0];
       const date = row[1]?.split(' ')[0];
       if(!serial || !date) return;
-      if(!counts[serial]) counts[serial]={};
+      if(!counts[serial]) counts[serial] = {};
       counts[serial][date] = (counts[serial][date] || 0) + 1;
     });
     return counts;
@@ -121,6 +121,24 @@ async function fetchSecondSheetData(){
     return {};
   }
 }
+
+async function fetchPNData(){
+  try{
+    const response = await fetch(`${sheetURL}${encodeURIComponent('PN')}?key=${apiKey}`);
+    const data = await response.json();
+    const rows = data.values || [];
+    return rows.slice(1).map(row => ({
+      date: row[0] || '',
+      pn: row[1] || '',
+      description: row[2] || '',
+      status: row[3] || ''
+    }));
+  }catch(err){
+    console.error('Ошибка при получении данных с листа PN', err);
+    return [];
+  }
+}
+
 
 function getChecksCount(serial, dateFrom, dateTo, counts){
   if(!counts[serial]) return 0;
