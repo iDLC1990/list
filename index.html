@@ -268,7 +268,7 @@ function renderTable(stats, from, to, secondCounts){
       <td>${s.ok + s.ndf}</td>
     `;
 
-    tr.firstChild.onclick = ()=>{
+    tr.querySelector('td').onclick = () => {
       if(tr.nextSibling?.classList.contains('detail-row')){
         tr.nextSibling.remove(); return;
       }
