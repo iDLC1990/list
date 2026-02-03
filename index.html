@@ -204,9 +204,14 @@ function getChecksCount(serial, from, to, counts){
 
 // ================= UPDATE =================
 async function update(){
-  const from = dateFrom.value;
-  const to = dateTo.value;
+  const dateFromInput = document.getElementById('date-from');
+  const dateToInput   = document.getElementById('date-to');
+
+  const from = dateFromInput.value;
+  const to   = dateToInput.value;
+
   if(!from || !to) return;
+
 
   const [data, secondCounts] = await Promise.all([
     fetchMainData(),
